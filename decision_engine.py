@@ -68,6 +68,7 @@ def process_new_user(cfg, ptype, score, amount, rep, reasons):
         add2 = cfg["score_weights"]["new_user_high_amount"]
         score += add2
         reasons.append(f"new_user_high_amount(+{add2})")
+    return score, reasons
 
 def assess_row(row: pd.Series, cfg: Dict[str, Any]) -> Dict[str, Any]:
     score = 0
@@ -114,7 +115,7 @@ def assess_row(row: pd.Series, cfg: Dict[str, Any]) -> Dict[str, Any]:
     amount = float(row.get("amount_mxn", 0.0))
     ptype = str(row.get("product_type", "_default")).lower()
     if high_amount(amount, ptype, cfg["amount_thresholds"]):
-        process_new_user(cfg, ptype, score, amount, rep, reasons)
+        score, reasons=process_new_user(cfg, ptype, score, amount, rep, reasons)
 
     # Extreme latency
     lat = int(row.get("latency_ms", 0))
