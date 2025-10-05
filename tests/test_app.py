@@ -83,3 +83,72 @@ def test_transaction_hard_block_rejection():
     data = r.json()
     assert data["transaction_id"] == 99
     assert data["decision"] == "REJECTED"
+
+def test_transaction_frequency_buffer():
+    """A recurrent user with a minor risk should have their score reduced by the buffer."""
+    body = {
+        "transaction_id": 105,
+        "user_reputation": "recurrent", 
+        "customer_txn_30d": 5,          
+        "ip_risk": "high",              
+    }
+    r = client.post("/transaction", json=body)
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert data["transaction_id"] == 105
+    assert "frequency_buffer(-1)" in data["reasons"]
+    assert data["risk_score"] == 2
+    assert data["decision"] == "ACCEPTED"
+
+def test_transaction_geo_mismatch():
+    """Transaction with different bin and IP countries should be flagged."""
+    body = {
+        "transaction_id": 104,
+        "bin_country": "US",
+        "ip_country": "MX",
+        "amount_mxn": 100.0,
+        "user_reputation": "new",
+        "ip_risk": "low",
+    }
+    r = client.post("/transaction", json=body)
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert data["transaction_id"] == 104
+    assert "geo_mismatch:US!=MX(+2)" in data["reasons"]
+
+def test_transaction_latency_extreme():
+    """A transaction with very high latency should get a score penalty of 2."""
+    body = {
+        "transaction_id": 103,
+        "latency_ms": 3000,
+        "amount_mxn": 100.0,
+        "user_reputation": "new",
+        "ip_risk": "low",
+        "email_risk": "low"
+    }
+    r = client.post("/transaction", json=body)
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert data["transaction_id"] == 103
+    assert "latency_extreme:3000ms(+2)" in data["reasons"]
+    assert data["decision"] == "ACCEPTED" 
+
+def test_transaction_is_night():
+    """A transaction at a night hour should be flagged by the is_night logic."""
+    body = {
+        "transaction_id": 106,
+        "hour": 23,  
+        "amount_mxn": 100.0,
+        "user_reputation": "new",
+        "ip_risk": "low",
+        "email_risk": "low",
+        "bin_country": "MX",
+        "ip_country": "MX"
+    }
+    r = client.post("/transaction", json=body)
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert data["transaction_id"] == 106
+    assert "night_hour:23(+1)" in data["reasons"]
+    assert data["risk_score"] == 1
+    assert data["decision"] == "ACCEPTED"

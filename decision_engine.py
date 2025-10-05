@@ -51,12 +51,31 @@ def high_amount(amount: float, product_type: str, thresholds: Dict[str, Any]) ->
     t = thresholds.get(product_type, thresholds.get("_default"))
     return amount >= t
 
+def hard_block(row, cfg):
+    return (int(row.get("chargeback_count", 0)) >= cfg["chargeback_hard_block"] and str(row.get("ip_risk", "low")).lower() == "high")
+
+def geo_mismatch(bin_c, ip_c):
+    return (bin_c and ip_c and bin_c != ip_c)
+
+def freq_buffer(rep, freq, score):
+    return (rep in ("recurrent", "trusted") and freq >= 3 and score > 0)
+
+def process_new_user(cfg, ptype, score, amount, rep, reasons):
+    add = cfg["score_weights"]["high_amount"]
+    score += add
+    reasons.append(f"high_amount:{ptype}:{amount}(+{add})")
+    if rep == "new":
+        add2 = cfg["score_weights"]["new_user_high_amount"]
+        score += add2
+        reasons.append(f"new_user_high_amount(+{add2})")
+    return score, reasons
+
 def assess_row(row: pd.Series, cfg: Dict[str, Any]) -> Dict[str, Any]:
     score = 0
     reasons: List[str] = []
 
     # Hard block: repeated chargebacks + high IP risk
-    if int(row.get("chargeback_count", 0)) >= cfg["chargeback_hard_block"] and str(row.get("ip_risk", "low")).lower() == "high":
+    if hard_block(row, cfg):
         reasons.append("hard_block:chargebacks>=2+ip_high")
         return {"decision": DECISION_REJECTED, "risk_score": 100, "reasons": ";".join(reasons)}
 
@@ -87,7 +106,7 @@ def assess_row(row: pd.Series, cfg: Dict[str, Any]) -> Dict[str, Any]:
     # Geo mismatch
     bin_c = str(row.get("bin_country", "")).upper()
     ip_c  = str(row.get("ip_country", "")).upper()
-    if bin_c and ip_c and bin_c != ip_c:
+    if geo_mismatch(bin_c, ip_c):
         add = cfg["score_weights"]["geo_mismatch"]
         score += add
         reasons.append(f"geo_mismatch:{bin_c}!={ip_c}(+{add})")
@@ -96,13 +115,7 @@ def assess_row(row: pd.Series, cfg: Dict[str, Any]) -> Dict[str, Any]:
     amount = float(row.get("amount_mxn", 0.0))
     ptype = str(row.get("product_type", "_default")).lower()
     if high_amount(amount, ptype, cfg["amount_thresholds"]):
-        add = cfg["score_weights"]["high_amount"]
-        score += add
-        reasons.append(f"high_amount:{ptype}:{amount}(+{add})")
-        if rep == "new":
-            add2 = cfg["score_weights"]["new_user_high_amount"]
-            score += add2
-            reasons.append(f"new_user_high_amount(+{add2})")
+        score, reasons=process_new_user(cfg, ptype, score, amount, rep, reasons)
 
     # Extreme latency
     lat = int(row.get("latency_ms", 0))
@@ -113,7 +126,7 @@ def assess_row(row: pd.Series, cfg: Dict[str, Any]) -> Dict[str, Any]:
 
     # Frequency buffer for trusted/recurrent
     freq = int(row.get("customer_txn_30d", 0))
-    if rep in ("recurrent", "trusted") and freq >= 3 and score > 0:
+    if freq_buffer(rep, freq, score):
         score -= 1
         reasons.append("frequency_buffer(-1)")
 
