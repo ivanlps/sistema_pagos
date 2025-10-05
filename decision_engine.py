@@ -61,14 +61,13 @@ def freq_buffer(rep, freq, score):
     return (rep in ("recurrent", "trusted") and freq >= 3 and score > 0)
 
 def process_new_user(cfg, ptype, amount, rep, reasons):
+    add = cfg["score_weights"]["high_amount"]
+    score += add
+    reasons.append(f"high_amount:{ptype}:{amount}(+{add})")
     if rep == "new":
         add2 = cfg["score_weights"]["new_user_high_amount"]
         score += add2
         reasons.append(f"new_user_high_amount(+{add2})")
-    else:
-        add = cfg["score_weights"]["high_amount"]
-        score += add
-        reasons.append(f"high_amount:{ptype}:{amount}(+{add})")
 
 def assess_row(row: pd.Series, cfg: Dict[str, Any]) -> Dict[str, Any]:
     score = 0
