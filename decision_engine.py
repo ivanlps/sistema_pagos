@@ -68,6 +68,7 @@ def process_new_user(cfg, ptype, amount, rep, reasons):
         add2 = cfg["score_weights"]["new_user_high_amount"]
         score += add2
         reasons.append(f"new_user_high_amount(+{add2})")
+    return reasons
 
 def assess_row(row: pd.Series, cfg: Dict[str, Any]) -> Dict[str, Any]:
     score = 0
