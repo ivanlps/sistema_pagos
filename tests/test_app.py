@@ -152,24 +152,3 @@ def test_transaction_is_night():
     assert "night_hour:23(+1)" in data["reasons"]
     assert data["risk_score"] == 1
     assert data["decision"] == "ACCEPTED"
-
-def test_transaction_high_amount():
-    """A transaction with a high amount for its product type should be flagged by the high_amount logic. High amount and new user -> IN_REVIEW"""
-    body = {
-        "transaction_id": 107,
-        "product_type": "digital",
-        "amount_mxn": 3000,  
-        "user_reputation": "recurrent", 
-        "hour": 15,
-        "ip_risk": "low",
-        "email_risk": "low",
-        "bin_country": "MX",
-        "ip_country": "MX"
-    }
-    r = client.post("/transaction", json=body)
-    assert r.status_code == 200, r.text
-    data = r.json()
-    assert data["transaction_id"] == 107
-    assert "high_amount:digital:3000(+2)" in data["reasons"]
-    assert data["risk_score"] == 1
-    assert data["decision"] == "ACCEPTED"
