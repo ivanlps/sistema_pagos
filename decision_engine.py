@@ -60,7 +60,7 @@ def geo_mismatch(bin_c, ip_c):
 def freq_buffer(rep, freq, score):
     return (rep in ("recurrent", "trusted") and freq >= 3 and score > 0)
 
-def process_new_user(cfg, ptype, amount, rep, reasons):
+def process_new_user(cfg, ptype, score, amount, rep, reasons):
     add = cfg["score_weights"]["high_amount"]
     score += add
     reasons.append(f"high_amount:{ptype}:{amount}(+{add})")
@@ -68,7 +68,6 @@ def process_new_user(cfg, ptype, amount, rep, reasons):
         add2 = cfg["score_weights"]["new_user_high_amount"]
         score += add2
         reasons.append(f"new_user_high_amount(+{add2})")
-    return reasons
 
 def assess_row(row: pd.Series, cfg: Dict[str, Any]) -> Dict[str, Any]:
     score = 0
@@ -115,7 +114,7 @@ def assess_row(row: pd.Series, cfg: Dict[str, Any]) -> Dict[str, Any]:
     amount = float(row.get("amount_mxn", 0.0))
     ptype = str(row.get("product_type", "_default")).lower()
     if high_amount(amount, ptype, cfg["amount_thresholds"]):
-        process_new_user(cfg, ptype, amount, rep, reasons)
+        process_new_user(cfg, ptype, score, amount, rep, reasons)
 
     # Extreme latency
     lat = int(row.get("latency_ms", 0))
