@@ -86,17 +86,15 @@ def assess_row(row: pd.Series, cfg: Dict[str, Any]) -> Dict[str, Any]:
         val = str(row.get(field, "low")).lower()
         add = mapping.get(val, 0)
         score += add
-        if add is None:
-            return None
-        reasons.append(f"{field}:{val}(+{add})")
+        if add:
+            reasons.append(f"{field}:{val}(+{add})")
 
     # Reputation
     rep = str(row.get("user_reputation", "new")).lower()
     rep_add = cfg["score_weights"]["user_reputation"].get(rep, 0)
     score += rep_add
-    if rep_add is None:
-        return None
-    reasons.append(f"user_reputation:{rep}({('+' if rep_add>=0 else '')}{rep_add})")
+    if rep_add:
+        reasons.append(f"user_reputation:{rep}({('+' if rep_add>=0 else '')}{rep_add})")
 
     # Night hour
     hr = int(row.get("hour", 12))
