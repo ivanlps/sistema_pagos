@@ -2,7 +2,7 @@ name: CI — Tests, Coverage, SonarQube
 
 on:
   push:
-    branches: [ "main", "master", "semana_2", "releases/**" ]
+    branches: [ "main", "master", "semana_2", "releases/**", level2]
   pull_request:
     types: [opened, synchronize, reopened]
 
